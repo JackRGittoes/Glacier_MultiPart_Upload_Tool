@@ -9,7 +9,7 @@ using Amazon;
 
 namespace MultipartUploadTool
 {
-    class Program
+   public class Program
     {
         // Global Variables
         static string vaultName = "";
@@ -132,7 +132,7 @@ namespace MultipartUploadTool
 
         public static List<String> FilePath()
         {
-            List<string> vaultName = new List<string>();
+            List<string> filePaths = new List<string>();
 
             // Loop to stop incorrect datatype exception 
             bool input = true;
@@ -157,12 +157,30 @@ namespace MultipartUploadTool
             for (int i = 0; i < noOfFiles; i++)
             {
                 var counter = i + 1;
+                bool incorrect = true;
                 Console.WriteLine("Input File Path " + counter + ": ");
-                vaultName.Add(Console.ReadLine());
+                while (incorrect)
+                {  
+                    string file = Console.ReadLine();
+
+                    if (filePaths.Contains(file))
+                    {
+                        RedText("File Already Added");
+                    }
+                    else if (File.Exists(file))
+                    {
+                        filePaths.Add(file);
+                        incorrect = false;
+                    }
+                    else
+                    {
+                        RedText("Invalid file path"); 
+                        Console.WriteLine("Input File Path " + counter + " (e.g. C:\\Users\\User\\Documents\\Image.jpg)");
+        }
+                }
+
             }
-
-
-            return vaultName;
+            return filePaths;
         }
 
         static string InitiateMultipartUpload(AmazonGlacierClient client, string vaultName)
