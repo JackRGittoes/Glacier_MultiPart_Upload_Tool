@@ -14,52 +14,54 @@ namespace MultipartUploadTool
     class Program
     {
         // Global Variables
-        List<string> archiveToUpload = new List<string>();
         static string vaultName = "";
-        static long partSize = 1048576; // 100MB 
+        static readonly long partSize = 1048576; // 100MB 
         static string ArchiveDescription = "";
         static string profileName = "";
         static string archiveFile = "";
         static int noOfFiles;
         static int uploadAttempt = 1;
-    
+
         public static void Main(string[] args)
         {
-            Console.WriteLine("*BEFORE YOU CAN START, YOU NEED TO CREATE A PROFILE* \n");
+            RedText("*BEFORE YOU CAN START, YOU NEED TO CREATE A PROFILE* \n");
             profileName = RegisterProfile();
 
-            //Sets upload region 
-            Console.WriteLine("Which Region would you like to upload the archive to (e.g. US-West-2)");
-            string region = Console.ReadLine();
+            // Sets the region 
+            string region = SetRegion();
 
             // Name of AWS Vault
             Console.WriteLine("\n Input Vault Name");
             vaultName = Console.ReadLine();
 
+            // Upload description for the archive
             Console.WriteLine("\n Input Archive Description");
             ArchiveDescription = Console.ReadLine();
 
+            // Retrieves the number of files to upload and the relevant file paths 
             List<string> archiveToUpload = new List<string>();
-
             archiveToUpload.AddRange(FilePath());
-            
+
             // Loops until no files to upload are left
-            for(int i = 0; i < archiveToUpload.Count; i++)
+            for (int i = 0; i < archiveToUpload.Count; i++)
             {
                 archiveFile = archiveToUpload[i];
 
                 /* Passes In AWS Profile
                  * And the archive file path */
                 AmazonGlacierClient(profileName, archiveFile, region);
-               
+
             }
 
-            Console.Write("Make sure to save the Archive ID");
-            Console.WriteLine("\n All Files successfully uploaded to the Archive, Press Enter to exit");
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine("Make sure to save the Archive ID");
+            Console.ForegroundColor = ConsoleColor.White;
+
+            Console.WriteLine("\n Press Enter to exit");
             Console.ReadLine();
 
         }
-         
+
         // Method to create a profile for AWS Credentials
         public static string RegisterProfile()
         {
@@ -75,7 +77,6 @@ namespace MultipartUploadTool
             return profileName;
         }
 
-        
         public static void AmazonGlacierClient(string profileName, string archiveToUpload, string region)
         {
             AmazonGlacierClient client;
@@ -84,6 +85,7 @@ namespace MultipartUploadTool
             var newRegion = RegionEndpoint.GetBySystemName(region);
             try
             {
+                // Connects to Amazon Glacier using your credentials and the specified region 
                 using (client = new AmazonGlacierClient(credentials, newRegion))
                 {
 
@@ -98,10 +100,10 @@ namespace MultipartUploadTool
 
             }
 
-
+            // If Glacier times out it will re attempt the upload 5 times
             catch (RequestTimeoutException)
             {
-                var uploadAttempt = +1;
+                uploadAttempt = +1;
                 Console.WriteLine("Glacier Timed out while receiving the upload \n Upload Attempt " + uploadAttempt + " / 5");
 
                 Console.WriteLine(" Upload Attempt " + uploadAttempt + " / 5");
@@ -127,7 +129,7 @@ namespace MultipartUploadTool
 
             catch (AmazonServiceException e) { Console.WriteLine(e.Message); }
             catch (Exception e) { Console.WriteLine(e.Message); }
-            
+
         }
 
         public static List<String> FilePath()
@@ -142,7 +144,7 @@ namespace MultipartUploadTool
                 {
                     Console.WriteLine("How Many files are you uploading? ");
                     noOfFiles = Convert.ToInt32(Console.ReadLine());
-                    
+
                     if (noOfFiles >= 1)
                     {
                         input = false;
@@ -194,7 +196,7 @@ namespace MultipartUploadTool
                     Stream uploadPartStream = GlacierUtils.CreatePartStream(fileToUpload, partSize);
                     string checksum = TreeHashGenerator.CalculateTreeHash(uploadPartStream);
                     partChecksumList.Add(checksum);
-                    // Upload part.
+
                     UploadMultipartPartRequest uploadMPUrequest = new UploadMultipartPartRequest()
                     {
 
@@ -225,6 +227,41 @@ namespace MultipartUploadTool
 
             CompleteMultipartUploadResponse completeMPUresponse = client.CompleteMultipartUpload(completeMPUrequest);
             return completeMPUresponse.ArchiveId;
+        }
+
+        public static string SetRegion()
+        {
+            string[] availableRegions = { "us-east-2", "us-east-1", "us-west-1", "us-west-2", "af-south-1", "ap-east-1", "ap-south-1", "ap-northeast-3", "ap-northeast-2",
+            "ap-southeast-1", "ap-southeast-2", "ap-northeast-1", "ca-central-1", "eu-central-1", "eu-west-1", "eu-west-2", "eu-south-1", "eu-west-3", "eu-north-1",
+            "me-south-1", "sa-east-1"};
+
+            string region = "";
+            bool invalid = true;
+            while (invalid)
+            {
+                Console.WriteLine("Which Region would you like to upload the archive to (e.g. US-West-2)");
+                region = Console.ReadLine();
+
+                if (availableRegions.Contains(region.ToLower()))
+                {
+                    invalid = false;
+                }
+                else
+                {
+                    RedText("Invalid Region");
+                    invalid = true;
+                }
+            }
+            return region;
+        }
+
+        public static string RedText(string text)
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine(text);
+            Console.ForegroundColor = ConsoleColor.White;
+
+            return text; 
         }
     }
 }
