@@ -11,9 +11,8 @@ namespace MultipartUploadTool
 {
    public class Program
     {
-        // Global Variables
         static string vaultName = "";
-        static readonly long partSize = 1048576; // 100MB 
+        static readonly long partSize = 1048576; // 100MB *Binary value* 
         static string ArchiveDescription = "";
         static string profileName = "";
         static string archiveFile = "";
@@ -88,7 +87,7 @@ namespace MultipartUploadTool
                 {
 
                     Console.WriteLine("Uploading an archive. \n");
-                    string uploadId = InitiateMultipartUpload(client, vaultName);
+                    string uploadId = InitiateMultipartUpload(client, vaultName); // Initiates the multipart upload
                     partChecksumList = UploadParts(uploadId, client, archiveToUpload);
                     string archiveId = CompleteMPU(uploadId, client, partChecksumList, archiveToUpload);
                     Console.WriteLine("Archive ID: {0}", archiveId);
@@ -120,11 +119,7 @@ namespace MultipartUploadTool
                 }
             }
 
-            catch (AmazonGlacierException e)
-            {
-                Console.WriteLine(e.Message);
-            }
-
+            catch (AmazonGlacierException e){Console.WriteLine(e.Message);}
             catch (AmazonServiceException e) { Console.WriteLine(e.Message); }
             catch (Exception e) { Console.WriteLine(e.Message); }
 
@@ -134,7 +129,7 @@ namespace MultipartUploadTool
         {
             List<string> filePaths = new List<string>();
 
-            // Loop to stop incorrect datatype exception 
+            // Loop to stop incorrect user input
             bool input = true;
             while (input)
             {
@@ -154,13 +149,14 @@ namespace MultipartUploadTool
                 }
             }
 
+            // Loops until the number of files needed is reached
             for (int i = 0; i < noOfFiles; i++)
             {
                 var counter = i + 1;
                 bool incorrect = true;
                 Console.WriteLine("Input File Path " + counter + ": ");
                 while (incorrect)
-                {  
+                {
                     string file = Console.ReadLine();
 
                     if (filePaths.Contains(file))
@@ -174,15 +170,17 @@ namespace MultipartUploadTool
                     }
                     else
                     {
-                        RedText("Invalid file path"); 
+                        RedText("Invalid file path");
                         Console.WriteLine("Input File Path " + counter + " (e.g. C:\\Users\\User\\Documents\\Image.jpg)");
-        }
+                    }
+
                 }
 
             }
             return filePaths;
         }
 
+        // Grabs the Upload ID to pass into the UploadParts method
         static string InitiateMultipartUpload(AmazonGlacierClient client, string vaultName)
         {
             InitiateMultipartUploadRequest initiateMPUrequest = new InitiateMultipartUploadRequest()
@@ -198,6 +196,7 @@ namespace MultipartUploadTool
             return initiateMPUresponse.UploadId;
         }
 
+        // Uploads each part to AWS 
         static List<string> UploadParts(string uploadID, AmazonGlacierClient client, string archiveToUpload)
         {
             List<string> partChecksumList = new List<string>();
@@ -212,7 +211,6 @@ namespace MultipartUploadTool
                     Stream uploadPartStream = GlacierUtils.CreatePartStream(fileToUpload, partSize);
                     string checksum = TreeHashGenerator.CalculateTreeHash(uploadPartStream);
                     partChecksumList.Add(checksum);
-
                     UploadMultipartPartRequest uploadMPUrequest = new UploadMultipartPartRequest()
                     {
 
@@ -230,6 +228,7 @@ namespace MultipartUploadTool
             return partChecksumList;
         }
 
+        // After each file is uploaded it will return an ArchiveID 
         static string CompleteMPU(string uploadID, AmazonGlacierClient client, List<string> partChecksumList, string archiveToUpload)
         {
             long fileLength = new FileInfo(archiveToUpload).Length;
@@ -245,6 +244,7 @@ namespace MultipartUploadTool
             return completeMPUresponse.ArchiveId;
         }
 
+        // Sets the AWS Region to upload to 
         public static string SetRegion()
         {
             string[] availableRegions = { "us-east-2", "us-east-1", "us-west-1", "us-west-2", "af-south-1", "ap-east-1", "ap-south-1", "ap-northeast-3", "ap-northeast-2",
@@ -271,13 +271,12 @@ namespace MultipartUploadTool
             return region;
         }
 
-        public static string RedText(string text)
+        //Colours important text red
+        public static void RedText(string text)
         {
             Console.ForegroundColor = ConsoleColor.Red;
             Console.WriteLine(text);
             Console.ForegroundColor = ConsoleColor.White;
-
-            return text; 
         }
     }
 }
