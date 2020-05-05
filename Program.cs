@@ -21,7 +21,7 @@ namespace MultipartUploadTool
 
         public static void Main(string[] args)
         {
-            RedText("*BEFORE YOU CAN START, YOU NEED TO CREATE A PROFILE* \n");
+            RedText("*BEFORE YOU CAN START, YOU NEED TO CREATE A PROFILE* \n Note: the profile is temporary and will only be stored during runtime \n");
             profileName = RegisterProfile();
 
             // Sets the region 
@@ -135,7 +135,7 @@ namespace MultipartUploadTool
             {
                 try
                 {
-                    Console.WriteLine("How Many files are you uploading? ");
+                    Console.WriteLine("\n How Many files are you uploading? ");
                     noOfFiles = Convert.ToInt32(Console.ReadLine());
 
                     if (noOfFiles >= 1)
@@ -170,7 +170,7 @@ namespace MultipartUploadTool
                     }
                     else
                     {
-                        RedText("Invalid file path");
+                        RedText("Invalid file path \n");
                         Console.WriteLine("Input File Path " + counter + " (e.g. C:\\Users\\User\\Documents\\Image.jpg)");
                     }
 
@@ -255,7 +255,7 @@ namespace MultipartUploadTool
             bool invalid = true;
             while (invalid)
             {
-                Console.WriteLine("Which Region would you like to upload the archive to (e.g. US-West-2)");
+                Console.WriteLine("\n Which Region would you like to upload the archive to (e.g. US-West-2)");
                 region = Console.ReadLine();
 
                 if (availableRegions.Contains(region.ToLower()))
@@ -264,7 +264,7 @@ namespace MultipartUploadTool
                 }
                 else
                 {
-                    RedText("Invalid Region");
+                    RedText("Invalid Region \n");
                     invalid = true;
                 }
             }
