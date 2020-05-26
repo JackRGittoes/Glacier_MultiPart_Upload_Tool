@@ -100,21 +100,22 @@ namespace MultipartUploadTool
         // Temporary AWS Credentials for IAM Users
         private static SessionAWSCredentials TemporaryCredentials()
         {
+            Console.SetIn(new StreamReader(Console.OpenStandardInput(8192)));
+
+            string line = Console.ReadLine();
+
             Console.WriteLine("Input Access Key");
             string AccessKeyId = Console.ReadLine();
             Console.WriteLine("Input Secret Key");
             string SecretAccessKey = Console.ReadLine();
             Console.WriteLine("Input Session Token");
             string SessionToken = Console.ReadLine();
+            
 
-           
+
             using (var stsClient = new AmazonSecurityTokenServiceClient())
             {
-                var sessionCredentials =
-                    new SessionAWSCredentials(AccessKeyId,
-                                              SecretAccessKey,
-                                              SessionToken);
-
+               
                 var awsCredentials = new SessionAWSCredentials(AccessKeyId, SecretAccessKey, SessionToken);
                 
                 return awsCredentials;
