@@ -14,16 +14,18 @@ namespace MultipartUploadTool
 {
    public class Program
     {
-        static string vaultName = "";
-        static readonly long partSize = 1048576; // 100MB *Binary value* 
-        static string profileName = "";
+        
+        static readonly int partSize = 134217728; // 100MB *Binary value* 
         static string archiveFile = "";
         static int noOfFiles;
         static int uploadAttempt = 1;
-        private static SessionAWSCredentials tempCredentials { get; set; }
+        
 
         public static void Main(string[] args)
         {
+            string vaultName = "";
+            string profileName = "" ;
+            SessionAWSCredentials sessionCredentials = null; 
             Console.WriteLine("Are You a root user or IAM user? \n [1] ROOT User \n [2] IAM User");
             int userType = Convert.ToInt32(Console.ReadLine());
             if (userType == 1)
@@ -31,7 +33,13 @@ namespace MultipartUploadTool
                 RedText("*BEFORE YOU CAN START, YOU NEED TO CREATE A PROFILE* \n Note: the profile is temporary and will only be stored during runtime \n");
                 profileName = RegisterProfile();
             }
-            
+            else if (userType == 2)
+            {
+                 sessionCredentials = TemporaryCredentials();
+               
+
+            }
+
             // Sets the region 
             string region = SetRegion();
 
@@ -52,20 +60,10 @@ namespace MultipartUploadTool
                 /* Passes In AWS Profile
                  * And the archive file path */
 
-                if (userType == 1)
-                {
-                    var profileName = "";
-                    var sessionCredentials = TemporaryCredentials();
-                    AmazonGlacierClient(profileName, archiveFile, region, sessionCredentials, userType);
+                
+                 AmazonGlacierClient(profileName, archiveFile, region, sessionCredentials, userType, vaultName);
 
-
-                }
-                else if (userType == 2)
-                {
-                    var sessionCredentials = TemporaryCredentials();
-                    AmazonGlacierClient(profileName, archiveFile, region, sessionCredentials, userType);
-                   
-                }
+                
             }
 
             Console.ForegroundColor = ConsoleColor.Red;
@@ -102,33 +100,28 @@ namespace MultipartUploadTool
         {
             Console.SetIn(new StreamReader(Console.OpenStandardInput(8192)));
 
-            string line = Console.ReadLine();
-
             Console.WriteLine("Input Access Key");
             string AccessKeyId = Console.ReadLine();
             Console.WriteLine("Input Secret Key");
             string SecretAccessKey = Console.ReadLine();
             Console.WriteLine("Input Session Token");
             string SessionToken = Console.ReadLine();
+
+            var awsCredentials = new SessionAWSCredentials(AccessKeyId, SecretAccessKey, SessionToken);
+
             
-
-
-            using (var stsClient = new AmazonSecurityTokenServiceClient())
-            {
-               
-                var awsCredentials = new SessionAWSCredentials(AccessKeyId, SecretAccessKey, SessionToken);
                 
                 return awsCredentials;
-            }
+            
         }
 
 
-        public static void AmazonGlacierClient( string profileName , string archiveToUpload, string region, SessionAWSCredentials sessionCredentials, int userType)
+        public static void AmazonGlacierClient( string profileName , string archiveToUpload, string region, SessionAWSCredentials sessionCredentials, int userType, string vaultName)
         { 
             AmazonGlacierClient client;
             List<string> partChecksumList = new List<string>();
 
-                var credentials = new StoredProfileAWSCredentials(profileName); // AWS Profile
+               
                 
             var newRegion = RegionEndpoint.GetBySystemName(region);
             try
@@ -137,13 +130,14 @@ namespace MultipartUploadTool
                 
                 if (userType == 1)
                 {
+                    var credentials = new StoredProfileAWSCredentials(profileName); // AWS Profile
                     using (client = new AmazonGlacierClient(credentials, newRegion))
                     {
 
                         Console.WriteLine("Uploading an archive. \n");
                         string uploadId = InitiateMultipartUpload(client, vaultName); // Initiates the multipart upload
-                        partChecksumList = UploadParts(uploadId, client, archiveToUpload);
-                        string archiveId = CompleteMPU(uploadId, client, partChecksumList, archiveToUpload);
+                        partChecksumList = UploadParts(uploadId, client, archiveToUpload, vaultName);
+                        string archiveId = CompleteMPU(uploadId, client, partChecksumList, archiveToUpload, vaultName);
                         Console.WriteLine("Archive ID: {0}", archiveId);
                     }
                 }
@@ -154,8 +148,8 @@ namespace MultipartUploadTool
 
                         Console.WriteLine("Uploading an archive. \n");
                         string uploadId = InitiateMultipartUpload(client, vaultName); // Initiates the multipart upload
-                        partChecksumList = UploadParts(uploadId, client, archiveToUpload);
-                        string archiveId = CompleteMPU(uploadId, client, partChecksumList, archiveToUpload);
+                        partChecksumList = UploadParts(uploadId, client, archiveToUpload, vaultName);
+                        string archiveId = CompleteMPU(uploadId, client, partChecksumList, archiveToUpload, vaultName);
                         Console.WriteLine("Archive ID: {0}", archiveId);
                     }
                 }
@@ -175,7 +169,7 @@ namespace MultipartUploadTool
                 {
 
                     uploadAttempt++;
-                    AmazonGlacierClient(profileName, archiveToUpload, region, sessionCredentials, userType);
+                    AmazonGlacierClient(profileName, archiveToUpload, region, sessionCredentials, userType, vaultName);
                 }
                 else
                 {
@@ -264,7 +258,7 @@ namespace MultipartUploadTool
         }
 
         // Uploads each part to AWS 
-        static List<string> UploadParts(string uploadID, AmazonGlacierClient client, string archiveToUpload)
+        static List<string> UploadParts(string uploadID, AmazonGlacierClient client, string archiveToUpload, string vaultName)
         {
             List<string> partChecksumList = new List<string>();
             long currentPosition = 0;
@@ -296,7 +290,7 @@ namespace MultipartUploadTool
         }
 
         // After each file is uploaded it will return an ArchiveID 
-        static string CompleteMPU(string uploadID, AmazonGlacierClient client, List<string> partChecksumList, string archiveToUpload)
+        static string CompleteMPU(string uploadID, AmazonGlacierClient client, List<string> partChecksumList, string archiveToUpload, string vaultName)
         {
             long fileLength = new FileInfo(archiveToUpload).Length;
             CompleteMultipartUploadRequest completeMPUrequest = new CompleteMultipartUploadRequest()
